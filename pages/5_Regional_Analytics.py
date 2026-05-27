@@ -1,45 +1,41 @@
-# ==========================================
-# REGIONAL ANALYTICS DASHBOARD
-# ==========================================
-
 import streamlit as st
 import pandas as pd
-
 import plotly.express as px
 
-# ==========================================
+# =====================================
 # PAGE CONFIG
-# ==========================================
+# =====================================
 
 st.set_page_config(
     page_title="Regional Analytics",
-    page_icon="🌍",
     layout="wide"
 )
 
-# ==========================================
+# =====================================
 # LOAD DATA
-# ==========================================
+# =====================================
 
 df = pd.read_csv(
     "data/final_enterprise_energy_intelligence.csv"
 )
 
-# ==========================================
-# PAGE HEADER
-# ==========================================
+# =====================================
+# TITLE
+# =====================================
 
-st.title("🌍 Regional Energy Analytics")
+st.title("🌍 Regional Energy Intelligence")
 
 st.markdown("""
-Regional enterprise intelligence dashboard
-for analyzing commercial electricity consumption,
-efficiency, and operational behavior.
+Enterprise regional analytics platform for
+commercial electricity monitoring, regional
+comparison, and operational intelligence.
 """)
 
-# ==========================================
-# KPI CALCULATIONS
-# ==========================================
+st.markdown("---")
+
+# =====================================
+# KPI SECTION
+# =====================================
 
 total_circles = df['circle'].nunique()
 
@@ -47,197 +43,209 @@ total_divisions = df['division'].nunique()
 
 total_areas = df['area'].nunique()
 
-avg_efficiency = (
-    df['load_efficiency']
-    .mean()
-)
-
-# ==========================================
-# KPI CARDS
-# ==========================================
+avg_units = df['units'].mean()
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "Total Circles",
+        "🏢 Total Circles",
         total_circles
     )
 
 with col2:
     st.metric(
-        "Total Divisions",
+        "📍 Total Divisions",
         total_divisions
     )
 
 with col3:
     st.metric(
-        "Commercial Areas",
+        "🌐 Total Areas",
         total_areas
     )
 
 with col4:
     st.metric(
-        "Avg Efficiency",
-        f"{avg_efficiency:.2f}"
+        "⚡ Avg Units",
+        f"{avg_units:,.2f}"
     )
 
 st.markdown("---")
 
-# ==========================================
+# =====================================
 # CIRCLE-WISE CONSUMPTION
-# ==========================================
+# =====================================
 
 circle_consumption = (
+
     df.groupby('circle')['units']
     .sum()
     .sort_values(ascending=False)
     .reset_index()
+
 )
 
 fig1 = px.bar(
+
     circle_consumption,
+
     x='circle',
     y='units',
-    title="Circle-wise Electricity Consumption",
-    text_auto=True
+
+    color='units',
+
+    title='Circle-wise Electricity Consumption',
+
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig1,
-    use_container_width=True
-)
+st.plotly_chart(fig1, width='stretch')
 
-# ==========================================
+# =====================================
 # DIVISION-WISE LOAD
-# ==========================================
+# =====================================
 
 division_load = (
+
     df.groupby('division')['load']
     .sum()
     .sort_values(ascending=False)
     .head(15)
     .reset_index()
+
 )
 
 fig2 = px.bar(
+
     division_load,
+
     x='division',
     y='load',
-    title="Top Divisions by Operational Load",
-    text_auto=True
+
+    color='load',
+
+    title='Top Divisions by Load',
+
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
+st.plotly_chart(fig2, width='stretch')
 
-# ==========================================
+# =====================================
 # REGIONAL EFFICIENCY
-# ==========================================
+# =====================================
 
-circle_efficiency = (
+regional_efficiency = (
+
     df.groupby('circle')['load_efficiency']
     .mean()
-    .sort_values(ascending=False)
     .reset_index()
+
 )
 
-fig3 = px.bar(
-    circle_efficiency,
-    x='circle',
-    y='load_efficiency',
-    title="Regional Load Efficiency Ranking",
-    text_auto=True
+fig3 = px.pie(
+
+    regional_efficiency,
+
+    names='circle',
+    values='load_efficiency',
+
+    title='Regional Load Efficiency',
+
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig3,
-    use_container_width=True
+st.plotly_chart(fig3, width='stretch')
+
+# =====================================
+# SERVICE UTILIZATION
+# =====================================
+
+service_utilization = (
+
+    df.groupby('area')[
+        'service_utilization_ratio'
+    ]
+    .mean()
+    .sort_values(ascending=False)
+    .head(15)
+    .reset_index()
+
 )
 
-# ==========================================
-# RISK HEATMAP
-# ==========================================
+fig4 = px.treemap(
 
-risk_summary = (
-    df.groupby(['circle', 'risk_category'])
-    .size()
-    .reset_index(name='count')
+    service_utilization,
+
+    path=['area'],
+
+    values='service_utilization_ratio',
+
+    color='service_utilization_ratio',
+
+    title='Service Utilization Intelligence',
+
+    template='plotly_dark'
 )
 
-fig4 = px.density_heatmap(
-    risk_summary,
-    x='circle',
-    y='risk_category',
-    z='count',
-    title="Regional Risk Heatmap"
-)
+st.plotly_chart(fig4, width='stretch')
 
-st.plotly_chart(
-    fig4,
-    use_container_width=True
-)
-
-# ==========================================
-# INTERACTIVE FILTER
-# ==========================================
+# =====================================
+# REGIONAL DATA TABLE
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Regional Intelligence Explorer")
+st.subheader("📊 Regional Enterprise Intelligence")
 
-selected_circle = st.selectbox(
-    "Select Circle",
-    sorted(df['circle'].unique())
+regional_table = (
+
+    df.groupby(
+        ['circle', 'division']
+    )
+    .agg({
+
+        'units': 'sum',
+
+        'load': 'sum',
+
+        'load_efficiency': 'mean',
+
+        'service_utilization_ratio': 'mean'
+
+    })
+    .reset_index()
+
 )
-
-filtered_df = df[
-    df['circle'] == selected_circle
-]
 
 st.dataframe(
-    filtered_df[
-        [
-            'circle',
-            'division',
-            'area',
-            'units',
-            'load',
-            'load_efficiency',
-            'risk_category'
-        ]
-    ].head(100)
+    regional_table.head(50),
+    width='stretch'
 )
 
-# ==========================================
+# =====================================
 # EXECUTIVE INSIGHTS
-# ==========================================
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Regional Intelligence Insights")
+st.subheader("🧠 Executive Regional Insights")
 
-st.info(f"""
-• {total_circles} operational circles analyzed.
+st.info("""
+Regional intelligence analysis indicates:
 
-• Regional consumption patterns indicate
-  concentrated enterprise energy demand.
-
-• Efficiency analysis highlights
-  operational optimization opportunities.
-
-• Geographic intelligence supports
-  targeted commercial energy planning.
+• High-load enterprise regions require monitoring  
+• Service utilization varies significantly across divisions  
+• Regional efficiency optimization opportunities detected  
+• Commercial energy patterns show operational imbalance  
+• AI forecasting can improve regional planning efficiency  
 """)
 
-# ==========================================
-# FOOTER
-# ==========================================
+# =====================================
+# SYSTEM STATUS
+# =====================================
 
-st.markdown("---")
-
-st.caption(
-    "Regional Enterprise Intelligence System"
+st.success(
+    "Regional intelligence platform operational."
 )

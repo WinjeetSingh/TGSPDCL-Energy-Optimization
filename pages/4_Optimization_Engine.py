@@ -1,236 +1,250 @@
-# ==========================================
-# OPTIMIZATION ENGINE
-# ==========================================
-
 import streamlit as st
 import pandas as pd
-
 import plotly.express as px
 
-# ==========================================
+# =====================================
 # PAGE CONFIG
-# ==========================================
+# =====================================
 
 st.set_page_config(
     page_title="Optimization Engine",
-    page_icon="⚙️",
     layout="wide"
 )
 
-# ==========================================
+# =====================================
 # LOAD DATA
-# ==========================================
+# =====================================
 
 df = pd.read_csv(
-    "data/optimization_recommendations.csv"
+    "data/final_enterprise_energy_intelligence.csv"
 )
 
-# ==========================================
-# PAGE HEADER
-# ==========================================
+# =====================================
+# TITLE
+# =====================================
 
-st.title("⚙️ AI Optimization Engine")
+st.title("⚙ AI Optimization Engine")
 
 st.markdown("""
-AI-powered operational optimization system
-for enterprise electricity intelligence and
-business recommendation generation.
+AI-powered optimization intelligence system
+for improving enterprise electricity efficiency
+and reducing operational risk.
 """)
 
-# ==========================================
-# KPI CALCULATIONS
-# ==========================================
+st.markdown("---")
 
-total_savings = (
-    df['estimated_savings_units']
-    .sum()
+# =====================================
+# KPI SECTION
+# =====================================
+
+high_risk_count = (
+    df[df['risk_category'] == 'HIGH RISK']
+    .shape[0]
 )
 
-high_priority = (
-    df['priority_level'] == 'HIGH PRIORITY'
-).sum()
+low_efficiency = (
+    df[df['load_efficiency'] < 50]
+    .shape[0]
+)
 
-medium_priority = (
-    df['priority_level'] == 'MEDIUM PRIORITY'
-).sum()
+avg_utilization = (
+    df['service_utilization_ratio']
+    .mean()
+)
 
-low_priority = (
-    df['priority_level'] == 'LOW PRIORITY'
-).sum()
-
-# ==========================================
-# KPI CARDS
-# ==========================================
+avg_efficiency = (
+    df['load_efficiency']
+    .mean()
+)
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "Estimated Savings",
-        f"{total_savings:,.0f}"
+        "⚠ High Risk Regions",
+        f"{high_risk_count:,}"
     )
 
 with col2:
     st.metric(
-        "High Priority",
-        f"{high_priority:,}"
+        "📉 Low Efficiency Records",
+        f"{low_efficiency:,}"
     )
 
 with col3:
     st.metric(
-        "Medium Priority",
-        f"{medium_priority:,}"
+        "🔋 Avg Utilization",
+        f"{avg_utilization:.2f}"
     )
 
 with col4:
     st.metric(
-        "Low Priority",
-        f"{low_priority:,}"
+        "⚡ Avg Efficiency",
+        f"{avg_efficiency:.2f}"
     )
 
 st.markdown("---")
 
-# ==========================================
-# PRIORITY DISTRIBUTION
-# ==========================================
+# =====================================
+# LOW EFFICIENCY AREAS
+# =====================================
 
-priority_distribution = (
-    df['priority_level']
-    .value_counts()
-    .reset_index()
-)
+low_efficiency_areas = (
 
-priority_distribution.columns = [
-    'Priority Level',
-    'Count'
-]
-
-fig1 = px.pie(
-    priority_distribution,
-    names='Priority Level',
-    values='Count',
-    title="Operational Priority Distribution"
-)
-
-st.plotly_chart(
-    fig1,
-    use_container_width=True
-)
-
-# ==========================================
-# HIGH PRIORITY AREAS
-# ==========================================
-
-high_priority_areas = (
-    df[df['priority_level'] == 'HIGH PRIORITY']
-    .groupby('area')
-    .size()
-    .sort_values(ascending=False)
+    df.groupby('area')['load_efficiency']
+    .mean()
+    .sort_values()
     .head(10)
     .reset_index()
+
 )
 
-high_priority_areas.columns = [
-    'Area',
-    'Count'
-]
+fig1 = px.bar(
 
-fig2 = px.bar(
-    high_priority_areas,
-    x='Area',
-    y='Count',
-    title="Top High Priority Commercial Areas",
-    text_auto=True
+    low_efficiency_areas,
+
+    x='area',
+    y='load_efficiency',
+
+    color='load_efficiency',
+
+    title='Low Efficiency Commercial Areas',
+
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
+st.plotly_chart(fig1, width='stretch')
 
-# ==========================================
-# SAVINGS OPPORTUNITIES
-# ==========================================
+# =====================================
+# HIGH LOAD AREAS
+# =====================================
 
-top_savings = (
-    df.groupby('area')['estimated_savings_units']
+high_load_areas = (
+
+    df.groupby('area')['load']
     .sum()
     .sort_values(ascending=False)
     .head(10)
     .reset_index()
+
 )
 
-fig3 = px.bar(
-    top_savings,
+fig2 = px.bar(
+
+    high_load_areas,
+
     x='area',
-    y='estimated_savings_units',
-    title="Top Estimated Energy Savings Areas",
-    text_auto=True
+    y='load',
+
+    color='load',
+
+    title='High Load Enterprise Regions',
+
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig3,
-    use_container_width=True
-)
+st.plotly_chart(fig2, width='stretch')
 
-# ==========================================
-# AI RECOMMENDATION TABLE
-# ==========================================
+# =====================================
+# OPTIMIZATION RECOMMENDATIONS
+# =====================================
 
 st.markdown("---")
 
-st.subheader("AI Optimization Recommendations")
+st.subheader("🧠 AI Optimization Recommendations")
 
-selected_priority = st.selectbox(
-    "Select Priority Level",
-    df['priority_level'].unique()
-)
+recommendations = pd.DataFrame({
 
-filtered_df = df[
-    df['priority_level'] == selected_priority
-]
+    'Priority': [
+        'HIGH',
+        'HIGH',
+        'MEDIUM',
+        'MEDIUM',
+        'LOW'
+    ],
+
+    'Recommendation': [
+
+        'Investigate high anomaly commercial zones',
+
+        'Reduce excessive operational load',
+
+        'Improve service utilization ratio',
+
+        'Monitor regional efficiency patterns',
+
+        'Optimize enterprise energy distribution'
+    ],
+
+    'Expected Impact': [
+
+        'Risk Reduction',
+
+        'Operational Stability',
+
+        'Better Efficiency',
+
+        'Performance Monitoring',
+
+        'Energy Optimization'
+    ]
+
+})
 
 st.dataframe(
-    filtered_df[
-        [
-            'circle',
-            'division',
-            'area',
-            'priority_level',
-            'optimization_recommendation',
-            'estimated_savings_units'
-        ]
-    ].head(50)
+    recommendations,
+    width='stretch'
 )
 
-# ==========================================
-# EXECUTIVE INSIGHTS
-# ==========================================
+# =====================================
+# RISK VS EFFICIENCY
+# =====================================
+
+fig3 = px.scatter(
+
+    df,
+
+    x='load_efficiency',
+
+    y='anomaly_score',
+
+    color='risk_category',
+
+    title='Risk vs Efficiency Intelligence',
+
+    template='plotly_dark',
+
+    hover_data=[
+        'circle',
+        'division',
+        'area'
+    ]
+)
+
+st.plotly_chart(fig3, width='stretch')
+
+# =====================================
+# EXECUTIVE ACTION CENTER
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Executive Optimization Insights")
+st.subheader("🚀 Executive Action Center")
 
-st.success(f"""
-• Estimated enterprise savings opportunity:
-  {total_savings:,.0f} energy units.
+st.warning("""
+Recommended enterprise actions:
 
-• High-priority operational regions require
-  immediate optimization attention.
-
-• AI recommendation engine identified
-  enterprise efficiency improvement opportunities.
-
-• Regional intelligence suggests targeted
-  operational load balancing strategies.
+• Prioritize HIGH RISK regions  
+• Monitor inefficient commercial areas  
+• Reduce abnormal operational loads  
+• Improve utilization efficiency  
+• Increase predictive monitoring frequency  
 """)
 
-# ==========================================
-# FOOTER
-# ==========================================
+# =====================================
+# SYSTEM STATUS
+# =====================================
 
-st.markdown("---")
-
-st.caption(
-    "AI Optimization & Decision Intelligence System"
+st.success(
+    "Optimization intelligence engine operational."
 )

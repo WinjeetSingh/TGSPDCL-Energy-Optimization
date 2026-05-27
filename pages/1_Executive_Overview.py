@@ -1,44 +1,41 @@
-# ==========================================
-# EXECUTIVE OVERVIEW DASHBOARD
-# ==========================================
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# ==========================================
+# =====================================
 # PAGE CONFIG
-# ==========================================
+# =====================================
 
 st.set_page_config(
     page_title="Executive Overview",
-    page_icon="📊",
     layout="wide"
 )
 
-# ==========================================
+# =====================================
 # LOAD DATA
-# ==========================================
+# =====================================
 
 df = pd.read_csv(
     "data/final_enterprise_energy_intelligence.csv"
 )
 
-# ==========================================
+# =====================================
 # HEADER
-# ==========================================
+# =====================================
 
-st.title("📊 Executive Energy Overview")
+st.title("📊 Executive Energy Intelligence Dashboard")
 
 st.markdown("""
-Enterprise-level commercial energy intelligence dashboard
-for monitoring operational efficiency and energy consumption.
+AI-powered enterprise monitoring system for
+commercial electricity intelligence.
 """)
 
-# ==========================================
-# KPI CALCULATIONS
-# ==========================================
+st.markdown("---")
+
+# =====================================
+# KPI SECTION
+# =====================================
 
 total_units = df['units'].sum()
 
@@ -46,45 +43,39 @@ total_load = df['load'].sum()
 
 total_services = df['totservices'].sum()
 
-high_risk = (
-    df['risk_category'] == 'HIGH RISK'
-).sum()
-
-# ==========================================
-# KPI CARDS
-# ==========================================
+avg_efficiency = df['load_efficiency'].mean()
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "Total Units",
+        "⚡ Total Units",
         f"{total_units:,.0f}"
     )
 
 with col2:
     st.metric(
-        "Total Load",
+        "🔌 Total Load",
         f"{total_load:,.0f}"
     )
 
 with col3:
     st.metric(
-        "Total Services",
+        "🏢 Total Services",
         f"{total_services:,.0f}"
     )
 
 with col4:
     st.metric(
-        "High Risk Regions",
-        f"{high_risk}"
+        "📈 Avg Efficiency",
+        f"{avg_efficiency:.2f}"
     )
 
 st.markdown("---")
 
-# ==========================================
-# TOP AREAS CHART
-# ==========================================
+# =====================================
+# TOP AREAS
+# =====================================
 
 top_areas = (
     df.groupby('area')['units']
@@ -98,18 +89,50 @@ fig1 = px.bar(
     top_areas,
     x='area',
     y='units',
-    title="Top 10 Commercial Areas by Consumption",
-    text_auto=True
+    title='Top 10 Areas by Consumption',
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig1,
-    use_container_width=True
+st.plotly_chart(fig1, width='stretch')
+
+# =====================================
+# CIRCLE CONSUMPTION
+# =====================================
+
+circle_data = (
+    df.groupby('circle')['units']
+    .sum()
+    .reset_index()
 )
 
-# ==========================================
+fig2 = px.pie(
+    circle_data,
+    names='circle',
+    values='units',
+    title='Circle-wise Consumption Distribution',
+    template='plotly_dark'
+)
+
+st.plotly_chart(fig2, width='stretch')
+
+# =====================================
+# LOAD VS UNITS
+# =====================================
+
+fig3 = px.scatter(
+    df,
+    x='load',
+    y='units',
+    color='risk_category',
+    title='Load vs Units Consumption',
+    template='plotly_dark'
+)
+
+st.plotly_chart(fig3, width='stretch')
+
+# =====================================
 # RISK DISTRIBUTION
-# ==========================================
+# =====================================
 
 risk_counts = (
     df['risk_category']
@@ -122,67 +145,36 @@ risk_counts.columns = [
     'Count'
 ]
 
-fig2 = px.pie(
+fig4 = px.bar(
     risk_counts,
-    names='Risk Category',
-    values='Count',
-    title="Enterprise Risk Distribution"
+    x='Risk Category',
+    y='Count',
+    color='Risk Category',
+    title='Enterprise Risk Distribution',
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
+st.plotly_chart(fig4, width='stretch')
 
-# ==========================================
-# CIRCLE ANALYSIS
-# ==========================================
-
-circle_consumption = (
-    df.groupby('circle')['units']
-    .sum()
-    .sort_values(ascending=False)
-    .reset_index()
-)
-
-fig3 = px.bar(
-    circle_consumption,
-    x='circle',
-    y='units',
-    title="Circle-wise Energy Consumption"
-)
-
-st.plotly_chart(
-    fig3,
-    use_container_width=True
-)
-
-# ==========================================
-# EXECUTIVE INSIGHTS
-# ==========================================
+# =====================================
+# DATA PREVIEW
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Executive Insights")
+st.subheader("📁 Enterprise Intelligence Dataset")
 
-st.info(f"""
-• Total commercial energy consumption reached {total_units:,.0f} units.
+st.dataframe(
+    df.head(20),
+    width='stretch'
+)
 
-• {high_risk} high-risk operational regions were detected.
-
-• Regional consumption patterns indicate concentration
-  in top commercial zones.
-
-• AI-driven optimization opportunities identified for
-  enterprise efficiency improvement.
-""")
-
-# ==========================================
+# =====================================
 # FOOTER
-# ==========================================
+# =====================================
 
 st.markdown("---")
 
-st.caption(
-    "TGSPDCL AI Energy Intelligence Platform"
+st.success(
+    "Executive monitoring system operational."
 )

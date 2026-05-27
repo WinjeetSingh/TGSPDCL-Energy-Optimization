@@ -1,73 +1,118 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import joblib
 import plotly.express as px
+import plotly.graph_objects as go
+import joblib
+from sklearn.preprocessing import LabelEncoder
 
-# =========================================
+# =====================================
 # PAGE CONFIG
-# =========================================
+# =====================================
 
 st.set_page_config(
-    page_title="Forecasting Engine",
+    page_title="AI Forecasting",
     layout="wide"
 )
 
-# =========================================
+# =====================================
 # LOAD DATA
-# =========================================
+# =====================================
 
 df = pd.read_csv(
-    "data/final_enterprise_energy_intelligence.csv"
+    "data/final_energy_dataset.csv"
 )
 
-# =========================================
+# =====================================
 # LOAD MODEL
-# =========================================
+# =====================================
 
 model = joblib.load(
     "models/lightgbm_energy_model.pkl"
 )
 
-# =========================================
-# PAGE TITLE
-# =========================================
+# =====================================
+# TITLE
+# =====================================
 
 st.title("📈 AI Energy Forecasting Engine")
 
 st.markdown("""
-LightGBM-powered commercial energy forecasting system
-for predicting enterprise electricity consumption.
+LightGBM-powered commercial energy forecasting
+system for predicting enterprise electricity consumption.
 """)
 
-# =========================================
-# SELECT FEATURES
-# =========================================
+st.markdown("---")
 
-selected_features = [
-    'circle',
-    'division',
-    'subdivision',
-    'section',
-    'area',
-    'totservices',
-    'billdservices',
-    'load',
-    'units_per_service',
-    'service_utilization_ratio',
-    'avg_load_per_service',
-    'load_efficiency'
-]
+# =====================================
+# SIDEBAR INPUTS
+# =====================================
 
-# =========================================
-# CREATE FEATURE DATAFRAME
-# =========================================
+st.sidebar.header("⚙ Forecast Inputs")
 
-X = df[selected_features].copy()
+circle = st.sidebar.selectbox(
+    "Select Circle",
+    df['circle'].unique()
+)
 
-# =========================================
-# ENCODE CATEGORICAL COLUMNS
-# =========================================
+division = st.sidebar.selectbox(
+    "Select Division",
+    df['division'].unique()
+)
+
+subdivision = st.sidebar.selectbox(
+    "Select Subdivision",
+    df['subdivision'].unique()
+)
+
+section = st.sidebar.selectbox(
+    "Select Section",
+    df['section'].unique()
+)
+
+area = st.sidebar.selectbox(
+    "Select Area",
+    df['area'].unique()
+)
+
+totservices = st.sidebar.number_input(
+    "Total Services",
+    min_value=1,
+    value=100
+)
+
+billdservices = st.sidebar.number_input(
+    "Billed Services",
+    min_value=1,
+    value=90
+)
+
+load = st.sidebar.number_input(
+    "Load",
+    min_value=1.0,
+    value=5000.0
+)
+
+# =====================================
+# FEATURE ENGINEERING
+# =====================================
+
+units_per_service = load / totservices
+
+service_utilization_ratio = (
+    billdservices / totservices
+)
+
+avg_load_per_service = (
+    load / totservices
+)
+
+load_efficiency = (
+    load / billdservices
+)
+
+# =====================================
+# ENCODING
+# =====================================
 
 categorical_columns = [
     'circle',
@@ -78,105 +123,187 @@ categorical_columns = [
 ]
 
 for col in categorical_columns:
-    X[col] = X[col].astype('category').cat.codes
+    
+    le = LabelEncoder()
+    
+    df[col] = le.fit_transform(
+        df[col].astype(str)
+    )
 
-# =========================================
-# PREDICTIONS
-# =========================================
+# Store encoders
+encoders = {}
 
-predictions = model.predict(X)
+for col in categorical_columns:
+    
+    encoder = LabelEncoder()
+    
+    encoder.fit(
+        pd.read_csv(
+            "data/final_energy_dataset.csv"
+        )[col].astype(str)
+    )
+    
+    encoders[col] = encoder
 
-df['predicted_units'] = predictions
+# Encode inputs
+circle_encoded = encoders['circle'].transform([circle])[0]
 
-# =========================================
-# KPI SECTION
-# =========================================
+division_encoded = encoders['division'].transform([division])[0]
+
+subdivision_encoded = encoders['subdivision'].transform([subdivision])[0]
+
+section_encoded = encoders['section'].transform([section])[0]
+
+area_encoded = encoders['area'].transform([area])[0]
+
+# =====================================
+# CREATE INPUT DATAFRAME
+# =====================================
+
+input_df = pd.DataFrame({
+
+    'circle': [circle_encoded],
+
+    'division': [division_encoded],
+
+    'subdivision': [subdivision_encoded],
+
+    'section': [section_encoded],
+
+    'area': [area_encoded],
+
+    'totservices': [totservices],
+
+    'billdservices': [billdservices],
+
+    'load': [load],
+
+    'units_per_service': [units_per_service],
+
+    'service_utilization_ratio': [
+        service_utilization_ratio
+    ],
+
+    'avg_load_per_service': [
+        avg_load_per_service
+    ],
+
+    'load_efficiency': [
+        load_efficiency
+    ]
+
+})
+
+# =====================================
+# PREDICTION
+# =====================================
+
+prediction = model.predict(input_df)[0]
+
+# =====================================
+# PREDICTION CARD
+# =====================================
+
+st.subheader("⚡ Forecasted Energy Consumption")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
-        "Average Predicted Units",
-        f"{df['predicted_units'].mean():,.2f}"
+        "Predicted Units",
+        f"{prediction:,.2f}"
     )
 
 with col2:
     st.metric(
-        "Maximum Predicted Units",
-        f"{df['predicted_units'].max():,.2f}"
+        "Load",
+        f"{load:,.2f}"
     )
 
 with col3:
     st.metric(
-        "Minimum Predicted Units",
-        f"{df['predicted_units'].min():,.2f}"
+        "Service Utilization",
+        f"{service_utilization_ratio:.2f}"
     )
 
-# =========================================
-# ACTUAL VS PREDICTED
-# =========================================
+st.markdown("---")
 
-st.subheader("Actual vs Predicted Consumption")
+# =====================================
+# FORECAST VISUALIZATION
+# =====================================
 
-fig = px.scatter(
+forecast_df = pd.DataFrame({
+    'Metric': [
+        'Predicted Units',
+        'Load',
+        'Total Services'
+    ],
+    'Value': [
+        prediction,
+        load,
+        totservices
+    ]
+})
+
+fig1 = px.bar(
+    forecast_df,
+    x='Metric',
+    y='Value',
+    color='Metric',
+    title='Forecast Intelligence',
+    template='plotly_dark'
+)
+
+st.plotly_chart(fig1, width='stretch')
+
+# =====================================
+# LOAD VS FORECAST
+# =====================================
+
+fig2 = px.scatter(
     df,
-    x='units',
-    y='predicted_units',
-    title='Actual vs Predicted Electricity Consumption',
-    labels={
-        'units': 'Actual Units',
-        'predicted_units': 'Predicted Units'
-    }
+    x='load',
+    y='units',
+    title='Historical Load vs Units',
+    template='plotly_dark'
 )
 
-st.plotly_chart(fig, width='stretch')
-
-# =========================================
-# TOP PREDICTED AREAS
-# =========================================
-
-st.subheader("Top Areas by Predicted Consumption")
-
-top_predicted = (
-    df.groupby('area')['predicted_units']
-    .mean()
-    .sort_values(ascending=False)
-    .head(10)
-    .reset_index()
-)
-
-fig2 = px.bar(
-    top_predicted,
-    x='area',
-    y='predicted_units',
-    title='Top 10 Areas by Predicted Energy Consumption'
+fig2.add_trace(
+    go.Scatter(
+        x=[load],
+        y=[prediction],
+        mode='markers',
+        marker=dict(
+            size=15
+        ),
+        name='Current Prediction'
+    )
 )
 
 st.plotly_chart(fig2, width='stretch')
 
-# =========================================
-# FORECAST TABLE
-# =========================================
+# =====================================
+# MODEL INSIGHTS
+# =====================================
 
-st.subheader("Forecast Data Table")
+st.markdown("---")
 
-forecast_table = df[
-    [
-        'circle',
-        'division',
-        'area',
-        'units',
-        'predicted_units'
-    ]
-].head(50)
+st.subheader("🧠 AI Model Insights")
 
-st.dataframe(
-    forecast_table,
-    width='stretch'
+st.info("""
+The LightGBM forecasting engine analyzes:
+
+• enterprise energy consumption  
+• operational efficiency  
+• service utilization  
+• regional energy patterns  
+• commercial load behavior  
+""")
+
+# =====================================
+# FOOTER
+# =====================================
+
+st.success(
+    "AI Forecasting Engine operational."
 )
-
-# =========================================
-# SUCCESS MESSAGE
-# =========================================
-
-st.success("Forecasting system initialized successfully.")

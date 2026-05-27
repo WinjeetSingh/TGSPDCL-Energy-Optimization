@@ -1,112 +1,140 @@
-# ==========================================
-# ANOMALY DETECTION DASHBOARD
-# ==========================================
-
 import streamlit as st
 import pandas as pd
-
 import plotly.express as px
+import plotly.graph_objects as go
 
-# ==========================================
+# =====================================
 # PAGE CONFIG
-# ==========================================
+# =====================================
 
 st.set_page_config(
     page_title="Anomaly Detection",
-    page_icon="🚨",
     layout="wide"
 )
 
-# ==========================================
+# =====================================
 # LOAD DATA
-# ==========================================
+# =====================================
 
 df = pd.read_csv(
     "data/final_enterprise_energy_intelligence.csv"
 )
 
-# ==========================================
-# PAGE HEADER
-# ==========================================
+# =====================================
+# TITLE
+# =====================================
 
-st.title("🚨 Enterprise Anomaly Detection")
+st.title("🚨 AI Anomaly Detection System")
 
 st.markdown("""
-Isolation Forest powered anomaly detection system
-for identifying abnormal commercial energy behavior.
+Isolation Forest-powered enterprise anomaly
+intelligence system for detecting suspicious
+commercial electricity behavior.
 """)
 
-# ==========================================
-# KPI METRICS
-# ==========================================
+st.markdown("---")
 
-total_records = len(df)
+# =====================================
+# KPI SECTION
+# =====================================
 
-anomaly_count = (
-    df['anomaly'] == -1
-).sum()
-
-normal_count = (
-    df['anomaly'] == 1
-).sum()
+total_anomalies = (
+    df[df['anomaly'] == -1]
+    .shape[0]
+)
 
 high_risk = (
-    df['risk_category'] == 'HIGH RISK'
-).sum()
+    df[df['risk_category'] == 'HIGH RISK']
+    .shape[0]
+)
 
-# ==========================================
-# KPI CARDS
-# ==========================================
+avg_anomaly_score = (
+    df['anomaly_score']
+    .mean()
+)
+
+total_records = df.shape[0]
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "Total Records",
-        f"{total_records:,}"
+        "🚨 Total Anomalies",
+        f"{total_anomalies:,}"
     )
 
 with col2:
     st.metric(
-        "Anomalies Detected",
-        f"{anomaly_count:,}"
+        "⚠ High Risk Regions",
+        f"{high_risk:,}"
     )
 
 with col3:
     st.metric(
-        "Normal Operations",
-        f"{normal_count:,}"
+        "📉 Avg Risk Score",
+        f"{avg_anomaly_score:.4f}"
     )
 
 with col4:
     st.metric(
-        "High Risk Regions",
-        f"{high_risk:,}"
+        "📁 Total Records",
+        f"{total_records:,}"
     )
 
 st.markdown("---")
 
-# ==========================================
-# ANOMALY VISUALIZATION
-# ==========================================
+# =====================================
+# ANOMALY SCATTER PLOT
+# =====================================
 
 fig1 = px.scatter(
     df,
     x='load',
     y='units',
     color='risk_category',
-    title="Energy Consumption Anomaly Detection",
-    opacity=0.7
+    title='Load vs Units Anomaly Intelligence',
+    template='plotly_dark',
+    hover_data=[
+        'circle',
+        'division',
+        'area'
+    ]
 )
 
-st.plotly_chart(
-    fig1,
-    use_container_width=True
+st.plotly_chart(fig1, width='stretch')
+
+# =====================================
+# TOP HIGH RISK AREAS
+# =====================================
+
+top_risk_areas = (
+    df[df['risk_category'] == 'HIGH RISK']
+    .groupby('area')
+    .size()
+    .sort_values(ascending=False)
+    .head(10)
+    .reset_index()
 )
 
-# ==========================================
+top_risk_areas.columns = [
+    'Area',
+    'Anomaly Count'
+]
+
+fig2 = px.bar(
+    top_risk_areas,
+    x='Area',
+    y='Anomaly Count',
+    color='Anomaly Count',
+    title='Top High Risk Commercial Areas',
+    template='plotly_dark'
+)
+
+st.plotly_chart(fig2, width='stretch')
+
+# =====================================
 # RISK DISTRIBUTION
-# ==========================================
+# =====================================
 
 risk_distribution = (
     df['risk_category']
@@ -119,68 +147,29 @@ risk_distribution.columns = [
     'Count'
 ]
 
-fig2 = px.pie(
+fig3 = px.pie(
     risk_distribution,
     names='Risk Category',
     values='Count',
-    title="Operational Risk Distribution"
+    title='Enterprise Risk Distribution',
+    template='plotly_dark'
 )
 
-st.plotly_chart(
-    fig2,
-    use_container_width=True
-)
+st.plotly_chart(fig3, width='stretch')
 
-# ==========================================
-# TOP HIGH-RISK AREAS
-# ==========================================
-
-high_risk_areas = (
-    df[df['risk_category'] == 'HIGH RISK']
-    .groupby('area')
-    .size()
-    .sort_values(ascending=False)
-    .head(10)
-    .reset_index()
-)
-
-high_risk_areas.columns = [
-    'Area',
-    'Anomaly Count'
-]
-
-fig3 = px.bar(
-    high_risk_areas,
-    x='Area',
-    y='Anomaly Count',
-    title="Top High-Risk Commercial Areas",
-    text_auto=True
-)
-
-st.plotly_chart(
-    fig3,
-    use_container_width=True
-)
-
-# ==========================================
-# INTERACTIVE FILTER
-# ==========================================
+# =====================================
+# ANOMALY TABLE
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Regional Risk Intelligence")
+st.subheader("⚠ Suspicious Enterprise Records")
 
-selected_circle = st.selectbox(
-    "Select Circle",
-    df['circle'].unique()
-)
-
-filtered_df = df[
-    df['circle'] == selected_circle
-]
+anomalies = df[df['anomaly'] == -1]
 
 st.dataframe(
-    filtered_df[
+
+    anomalies[
         [
             'circle',
             'division',
@@ -190,36 +179,50 @@ st.dataframe(
             'risk_category',
             'anomaly_score'
         ]
-    ].head(50)
+    ].head(50),
+
+    width='stretch'
 )
 
-# ==========================================
-# EXECUTIVE INSIGHTS
-# ==========================================
+# =====================================
+# RISK HEATMAP
+# =====================================
 
 st.markdown("---")
 
-st.subheader("Operational Intelligence Insights")
+heatmap_data = (
+    df.groupby('circle')['anomaly_score']
+    .mean()
+    .reset_index()
+)
 
-st.warning(f"""
-• {anomaly_count:,} operational anomalies detected.
+fig4 = px.treemap(
+    heatmap_data,
+    path=['circle'],
+    values='anomaly_score',
+    color='anomaly_score',
+    title='Regional Risk Heatmap',
+    template='plotly_dark'
+)
 
-• High-risk regions indicate abnormal
-  enterprise electricity behavior.
+st.plotly_chart(fig4, width='stretch')
 
-• Commercial load spikes suggest
-  optimization opportunities.
+# =====================================
+# ALERT SECTION
+# =====================================
 
-• AI monitoring system successfully
-  identified enterprise operational outliers.
+st.markdown("---")
+
+st.error("""
+⚠ Enterprise monitoring system detected
+high-risk commercial electricity patterns
+requiring operational investigation.
 """)
 
-# ==========================================
+# =====================================
 # FOOTER
-# ==========================================
+# =====================================
 
-st.markdown("---")
-
-st.caption(
-    "Enterprise Risk Intelligence System"
+st.success(
+    "AI anomaly intelligence engine operational."
 )
